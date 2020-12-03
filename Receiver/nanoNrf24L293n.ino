@@ -74,6 +74,8 @@ void ParserMessage() {
   previousMillis=millis();
 }
 
+//*******************************************//
+
 void SetL298n() {
   uint8_t duty;
   //set motorA throttle
@@ -109,7 +111,16 @@ void SetL298n() {
   analogWrite(ENB_PIN, duty);
 }
 
-//*******************************************//
+void DEBUG(){
+  Serial.print(F("RECEIVED  DATA: "));
+  Serial.println(payload.data, BIN);
+  Serial.print(F("THROTTLE  DATA: "));
+  Serial.println(throttle, BIN);
+  Serial.print(F("DIRECTION DATA: "));
+  Serial.println(direction, BIN);
+}
+
+
 
 //********************setup/loop**********************//
 
@@ -123,6 +134,7 @@ void loop() {
   unsigned long currentMillis = millis();
   //время
   if (currentMillis - previousMillis > 1000) {//секундный отсчет
+    DEBUG();
     previousMillis = currentMillis;
     throttle=0;
     direction=0;
