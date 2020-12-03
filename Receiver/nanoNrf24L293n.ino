@@ -28,12 +28,12 @@ uint8_t direction= 0;
 
 unsigned long previousMillis = 0;
 
-#define ENA_PIN 9
-#define ENB_PIN 10
-#define IN1_PIN 4
-#define IN2_PIN 5
-#define IN3_PIN 6
-#define IN4_PIN 7 
+#define ENA_PIN 5
+#define ENB_PIN 6
+#define IN1_PIN 2
+#define IN2_PIN 3
+#define IN3_PIN 4
+#define IN4_PIN 10 
 
 //******Секция функция работы с NRF датчиками*********//
 
