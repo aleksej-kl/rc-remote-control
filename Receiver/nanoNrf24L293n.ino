@@ -28,18 +28,18 @@ uint8_t direction= 0;
 
 unsigned long previousMillis = 0;
 
-#define ENA_PIN 5
-#define ENB_PIN 6
-#define IN1_PIN 2
-#define IN2_PIN 3
-#define IN3_PIN 4
-#define IN4_PIN 10 
+/*L298N*/
+#define ENA_PIN 5  //ENA
+#define ENB_PIN 6  //ENB
+#define IN1_PIN 2  //IN1
+#define IN2_PIN 3  //IN2
+#define IN3_PIN 4  //IN3
+#define IN4_PIN 10 //IN4
 
 //******Секция функция работы с NRF датчиками*********//
 
 // NRF инициализация
 void intNfr() {
-  byte dPipe;
   radio.begin(); // Старт работы;
   radio.setDataRate(RF24_250KBPS); // скорость передачи
   radio.setPALevel(RF24_PA_HIGH); // мощность передачика
@@ -112,29 +112,27 @@ void SetL298n() {
 }
 
 void DEBUG(){
-  Serial.print(F("RECEIVED  DATA: "));
-  Serial.println(payload.data, BIN);
-  Serial.print(F("THROTTLE  DATA: "));
-  Serial.println(throttle, BIN);
-  Serial.print(F("DIRECTION DATA: "));
-  Serial.println(direction, BIN);
+  Serial.write('\r');
+  Serial.print(F("   "));
+  Serial.print(payload.data, BIN);
+  Serial.print(F("    |   "));
+  Serial.print(throttle, BIN);
+  Serial.print(F("    |   "));
+  Serial.print(direction, BIN);
 }
-
-
 
 //********************setup/loop**********************//
 
 void setup() {
   Serial.begin(115200);// Не забыть отключить!!!
   intNfr(); //инициализируем nrf
-
+  Serial.println(F("RECEIVED  DATA | THROTTLE  DATA | DIRECTION DATA"));
 }
 
 void loop() {
   unsigned long currentMillis = millis();
   //время
   if (currentMillis - previousMillis > 1000) {//секундный отсчет
-    DEBUG();
     previousMillis = currentMillis;
     throttle=0;
     direction=0;
@@ -144,5 +142,6 @@ void loop() {
   //читаем с NRF
   ReadRF();
   SetL298n();
+  DEBUG();
 }
 
