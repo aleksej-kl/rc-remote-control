@@ -72,6 +72,7 @@ void ParserMessage() {
   direction=data>>4;
   //записываем время крайнего приема
   previousMillis=millis();
+  DEBUG();
 }
 
 //*******************************************//
@@ -124,8 +125,8 @@ void DEBUG(){
 //********************setup/loop**********************//
 
 void setup() {
-  Serial.begin(115200);// Не забыть отключить!!!
   intNfr(); //инициализируем nrf
+  Serial.begin(115200);
   Serial.println(F("RECEIVED  DATA | THROTTLE  DATA | DIRECTION DATA"));
 }
 
@@ -142,6 +143,5 @@ void loop() {
   //читаем с NRF
   ReadRF();
   SetL298n();
-  DEBUG();
 }
 
