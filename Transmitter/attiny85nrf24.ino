@@ -31,8 +31,8 @@ RC data
 // схема подключения
 #define CE_PIN            3 // CE
 #define CSN_PIN           3 // CSN
-#define THROTTLE_PIN	    4 // дроссель
-#define DIRECTION_PIN     5 // направление
+#define THROTTLE_PIN	    PB3 // дроссель
+#define DIRECTION_PIN     PB4 // направление
 
 //************* NRF config ***************//
 RF24 radio(CE_PIN, CSN_PIN);
@@ -66,8 +66,8 @@ void InitNrf() {
   radio.begin();
   //radio.setAutoAck(1); // включаем autoACK
   //radio.enableAckPayload(); //разрешение отправки нетипового ответа передатчику;
-  radio.setRetries(2,1); // задержка перед повтором и количество повторов
-  radio.setPayloadSize(SIZE_PACKET); // устанавливаем размер пакета в байтах
+  //radio.setRetries(2,1); // задержка перед повтором и количество повторов
+  //radio.setPayloadSize(SIZE_PACKET); // устанавливаем размер пакета в байтах
   radio.setChannel(CHANNEL); // устанавливаем канал
   radio.setDataRate(RF24_250KBPS); // скорость передачи
   radio.setPALevel(RF24_PA_HIGH); // мощность передачи
