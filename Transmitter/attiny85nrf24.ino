@@ -27,6 +27,7 @@ RC data
 #include <avr/power.h>  
 #include <avr/interrupt.h>
 #include "RF24.h"
+#include <EEPROM.h>
 
 // схема подключения
 #define CE_PIN            3 // CE
@@ -52,8 +53,9 @@ payload_t payload; // массив сообщений на отправку
 #define DIRECTION     1
 #define ADC_INPUN_LENGTH  2
 #define AVERAGE_FACTOR    3
-uint16_t adcResult[ADC_INPUN_LENGTH]={0, 0};
+uint16_t adcResult[ADC_INPUN_LENGTH]={512, 512};
 
+#define CHILD_MODE 10 //address in eeprom for child mode (low speed throttle)
 
 #define J_TABLE_LENGTH    16
 uint16_t jTable[2][J_TABLE_LENGTH]={
@@ -132,6 +134,48 @@ uint8_t GetBlock(uint16_t adc) {
   }
 }
 
+void InitMode(){
+  uint16_t AdcThrottleMin=512, AdcThrottle=512, AdcThrottleMax=512;
+  uint16_t AdcDirectionMin=512 ,AdcDirection=512; AdcDirectionMax=512;
+  while (millis()<250){
+    GetAdc();
+    //THROTTLE
+    if (adcResult[THROTTLE]>AdcThrottleMax){
+      AdcThrottleMax=adcResult[THROTTLE];
+    }
+    if (adcResult[THROTTLE]<AdcThrottleMin){
+      AdcThrottleMin=adcResult[THROTTLE];
+    }
+    //DIRECTION
+       if (adcResult[DIRECTION]>AdcDirectionMax){
+      AdcDirectionMax=adcResult[DIRECTION];
+    }
+    if (adcResult[DIRECTION]<AdcDirectionMin){
+      AdcDirectionMin=adcResult[DIRECTION];
+    }
+  }
+
+  if (AdcThrottleMin>AdcThrottle*0.9 and AdcThrottleMax<AdcThrottle*1.1){
+    return;
+  } else if(AdcDirectionMin>AdcDirection*0.9 and AdcDirectionMax<AdcDirection*1.1){
+    return;
+  }
+  /*If, when power is applied, the throttle is at maximum and the direction is to the right, then the normal mode.
+    If the throttle is at minimum and the direction is to the right, then the child mode
+  */
+  if(AdcDirectionMax>AdcDirection*1.1 and AdcThrottleMax>AdcThrottle*1.1){
+    EEPROM[CHILD_MODE]=false;
+    return;
+  } else if (AdcDirectionMax>AdcDirection*1.1 and AdcThrottleMin<AdcThrottle*0.9){
+    EEPROM[CHILD_MODE]=true;
+    return;
+  } else {
+    return;
+  }
+
+}
+
+
 //********************* setup - loop ***********************//
 
 void setup() {
@@ -139,10 +183,18 @@ void setup() {
   pinMode(DIRECTION_PIN, INPUT);
   InitNrf();
   InitAdc();
+  InitMode();
 }
 
 void loop() {
   GetAdc();
   payload.data=(GetBlock(adcResult[THROTTLE])<<4)+GetBlock(adcResult[DIRECTION]);
+  if (EEPROM[CHILD_MODE]){
+    if(bitRead(payload.data,6){
+      bitClear(payload.data,6);
+      bitSet(payload.data,5);
+      bitSet(payload.data,4);
+    }
+  }
   SendMessage();
 }
