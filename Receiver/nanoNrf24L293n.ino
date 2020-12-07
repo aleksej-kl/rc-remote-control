@@ -36,6 +36,9 @@ unsigned long previousMillis = 0;
 #define IN3_PIN 4  //IN3
 #define IN4_PIN 10 //IN4
 
+//
+#define HEAD_LIGHT A0
+
 //******Секция функция работы с NRF датчиками*********//
 
 // NRF инициализация
@@ -115,6 +118,26 @@ void DEBUG(){
   Serial.print(direction, BIN);
 }
 
+void HeadLight(){
+  static uint8_t timerOff=0;
+  static unsigned long prevMillis=0;
+
+  if(throttle!=0b00000000){
+    timerOff=30;
+  }
+
+  if (currentMillis - prevMillis > 1000) {//секундный отсчет
+    prevMillis = currentMillis;
+    if(timerOff>0) timerOff--;
+  }
+
+  if (timerOff>0){
+    digitalWrite(HEAD_LIGHT, HIGH);
+  } else {
+    digitalWrite(HEAD_LIGHT, LOW);
+  }
+}
+
 //********************setup/loop**********************//
 
 void setup() {
@@ -136,4 +159,5 @@ void loop() {
   //читаем с NRF
   ReadRF();
   SetL298n();
+  HeadLight();
 }
