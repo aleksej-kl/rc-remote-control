@@ -64,31 +64,27 @@ uint16_t jTable[2][J_TABLE_LENGTH]={
 // функция инициализации NRF
 void InitNrf() {
   radio.begin();
-  //radio.setAutoAck(1); // включаем autoACK
-  //radio.enableAckPayload(); //разрешение отправки нетипового ответа передатчику;
-  //radio.setRetries(2,1); // задержка перед повтором и количество повторов
-  //radio.setPayloadSize(SIZE_PACKET); // устанавливаем размер пакета в байтах
   radio.setChannel(CHANNEL); // устанавливаем канал
   radio.setDataRate(RF24_250KBPS); // скорость передачи
-  radio.setPALevel(RF24_PA_HIGH); // мощность передачи
+  radio.setPALevel(RF24_PA_LOW); // мощность передачи
   radio.openWritingPipe(PIPE); // открываем трубу на передачу.
 }
 
 // функция отправки данных через NRF
 void SendMessage() {
-  //radio.powerUp(); //будим nrf
   radio.write( &payload, SIZE_PACKET );  //Отправляем сообщение;
-  //radio.powerDown(); //усыпляем nrf
 }
 
 void InitAdc(){
     ADCSRA = 0;
     ADCSRA |= (1<<ADEN) //ADC on
            |(1<<ADSC)
-           |(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0); //Prescaler  128 = 64 кГц
+           |(1<<ADPS2)|(0<<ADPS1)|(0<<ADPS0);
 
     ADMUX = 0;
-    ADMUX |= (1<<REFS0); //internal voltage reference
+    ADMUX |= (0 << REFS2) |     // Sets ref. voltage to Vcc, bit 2
+            (0 << REFS1) |     // Sets ref. voltage to Vcc, bit 1   
+            (0 << REFS0);     // Sets ref. voltage to Vcc, bit 0; //internal voltage reference
 }
 
 void GetAdc(){
@@ -100,17 +96,29 @@ void GetAdc(){
 
     uint16_t adcValue = ADCL | (ADCH << 8);
     adcResult[adcQuery]= (adcResult[adcQuery]*(AVERAGE_FACTOR-1)+adcValue)/AVERAGE_FACTOR;
-
     if(adcQuery<ADC_INPUN_LENGTH-1){
         adcQuery++;
     } else {
         adcQuery=0;
     }
-    ADMUX = 0;
     if (adcQuery==0) {
-      ADMUX |= (1<<REFS0)|(THROTTLE_PIN);
+      ADMUX =  (0 << ADLAR) |     // do not left shift result (for 10-bit values)
+            (0 << REFS2) |     // Sets ref. voltage to Vcc, bit 2
+            (0 << REFS1) |     // Sets ref. voltage to Vcc, bit 1   
+            (0 << REFS0) |     // Sets ref. voltage to Vcc, bit 0
+            (0 << MUX3)  |     // use ADC3 for input (PB3), MUX bit 3
+            (0 << MUX2)  |     // use ADC3 for input (PB3), MUX bit 2
+            (1 << MUX1)  |     // use ADC3 for input (PB3), MUX bit 1
+            (1 << MUX0);       // use ADC3 for input (PB3), MUX bit 0;
     } else {
-      ADMUX |= (1<<REFS0)|(DIRECTION_PIN);
+      ADMUX =  (0 << ADLAR) |     // do not left shift result (for 10-bit values)
+            (0 << REFS2) |     // Sets ref. voltage to Vcc, bit 2
+            (0 << REFS1) |     // Sets ref. voltage to Vcc, bit 1   
+            (0 << REFS0) |     // Sets ref. voltage to Vcc, bit 0
+            (0 << MUX3)  |     // use ADC2 for input (PB4), MUX bit 3
+            (0 << MUX2)  |     // use ADC2 for input (PB4), MUX bit 2
+            (1 << MUX1)  |     // use ADC2 for input (PB4), MUX bit 1
+            (0 << MUX0);       // use ADC2 for input (PB4), MUX bit 0;
     }
     ADCSRA |= (1 << ADSC);
 }
@@ -127,11 +135,10 @@ uint8_t GetBlock(uint16_t adc) {
 //********************* setup - loop ***********************//
 
 void setup() {
-  pinMode(3, INPUT); //перевод в INPUT для уменьшения энергопотребления
-  pinMode(THROTTLE, INPUT);
-  pinMode(DIRECTION, INPUT);
-  InitNrf();         // инициализируем модуль NRF
-  //radio.powerDown(); //усыпляем nrf
+  pinMode(THROTTLE_PIN, INPUT);
+  pinMode(DIRECTION_PIN, INPUT);
+  InitNrf();
+  InitAdc();
 }
 
 void loop() {
