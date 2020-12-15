@@ -28,6 +28,7 @@ uint8_t direction= 0;
 
 unsigned long previousMillis = 0;
 
+//pin map
 /*L298N*/
 #define ENA_PIN 5  //ENA
 #define ENB_PIN 6  //ENB
@@ -37,7 +38,18 @@ unsigned long previousMillis = 0;
 #define IN4_PIN 10 //IN4
 
 //
-#define HEAD_LIGHT A0
+#define HEAD_LIGHT_PIN A0
+#define STEERING_PIN   A1
+#define AVERAGE_FACTOR 10
+
+unsigned long currentMillis;
+
+#define J_TABLE_LENGTH    16
+uint16_t jTable[2][J_TABLE_LENGTH]={
+    {     0,   100,   170,   240,    310,    380,    450,    512,    570,    640,    710,    780,    850,    924,    925,   1024},
+    {0b0111, 0b110, 0b101, 0b100, 0b0011, 0b0010, 0b0001, 0b0000, 0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
+};
+
 
 //******Секция функция работы с NRF датчиками*********//
 
@@ -91,20 +103,22 @@ void SetL298n() {
   duty=duty*35;
   analogWrite(ENA_PIN, duty);
 
-   //set motorB direction
-  if(direction==0b00000000) {
+  //recalc direction
+  uint8_t newDir=Steering();
+  //set motorB direction
+  if(newDir==0b00000000) {
     digitalWrite(IN3_PIN, LOW);
     digitalWrite(IN4_PIN, LOW);
-  } else if(direction<0b00001000) {
+    duty=0;
+  } else if(newDir<0b00001000) {
     digitalWrite(IN3_PIN, HIGH);
     digitalWrite(IN4_PIN, LOW);
+    duty=50;
   } else {
     digitalWrite(IN3_PIN, LOW);
     digitalWrite(IN4_PIN, HIGH);
+    duty=50;
   }
-  duty=direction;
-  bitClear(duty, 3);
-  duty=duty*35;
   analogWrite(ENB_PIN, duty);
 }
 
@@ -132,10 +146,34 @@ void HeadLight(){
   }
 
   if (timerOff>0){
-    digitalWrite(HEAD_LIGHT, HIGH);
+    digitalWrite(HEAD_LIGHT_PIN, HIGH);
   } else {
-    digitalWrite(HEAD_LIGHT, LOW);
+    digitalWrite(HEAD_LIGHT_PIN, LOW);
   }
+}
+
+//recalculation taking into account the current position of the steering wheels
+uint8_t Steering(){
+  uint8_t steeringPos;
+  uint8_t adcValue=analogRead(STEERING_PIN);
+  static uint16_t adcSteering=512;
+  adcSteering = (adcSteering*(AVERAGE_FACTOR-1)+adcValue)/AVERAGE_FACTOR;
+  
+  for (size_t i = 0; i < J_TABLE_LENGTH+1; i++){
+    if (adcSteering<=jTable[0][i]){
+      steeringPos = jTable[1][i];
+      break;
+    }
+  } 
+
+  if(steeringPos<direction){
+    return direction;
+  } else if(steeringPos>direction){
+    return direction ^ 0b00001000;
+  } else {
+    return 0b00000000;
+  }
+  
 }
 
 //********************setup/loop**********************//
@@ -147,7 +185,7 @@ void setup() {
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
+  currentMillis = millis();
   //время
   if (currentMillis - previousMillis > 1000) {//секундный отсчет
     previousMillis = currentMillis;
