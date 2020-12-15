@@ -57,9 +57,13 @@ uint16_t adcResult[ADC_INPUN_LENGTH]={512, 512};
 
 #define CHILD_MODE 10 //address in eeprom for child mode (low speed throttle)
 
+//парамметры потенциометров
+#define INVERT_THROTLE    true
+#define INVERT_DIRECTION  true
+
 #define J_TABLE_LENGTH    16
 uint16_t jTable[2][J_TABLE_LENGTH]={
-    {     0,   75,   150,   225,    300,     375,    450,    512,    575,    650,    725,    800,    875,    950,   1023, 1024},
+    {     0,   100,   170,   240,    310,    380,    450,    512,    570,    640,    710,    780,    850,    924,    925,   1024},
     {0b0111, 0b110, 0b101, 0b100, 0b0011, 0b0010, 0b0001, 0b0000, 0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
 };
 
@@ -126,51 +130,67 @@ void GetAdc(){
 }
 
 
-uint8_t GetBlock(uint16_t adc) {
+uint8_t CollectData() {
+  //add THROTTLE data
   for (size_t i = 0; i < J_TABLE_LENGTH+1; i++){
-    if (adc<=jTable[0][i]){
-      return jTable[1][i];
+    if (adcResult[THROTTLE]<=jTable[0][i]){
+      payload.data = (jTable[1][i]<<4);
+      break;
+    }
+  } 
+  //add DIRECTION data
+  for (size_t i = 0; i < J_TABLE_LENGTH+1; i++){
+    if (adcResult[DIRECTION]<=jTable[0][i]){
+      payload.data += jTable[1][i];
+      break;
+    }
+  }
+  //check invert
+  if (INVERT_THROTLE){
+    payload.data ^= (1<<7);
+  }
+  if (INVERT_DIRECTION){
+    payload.data ^= (1<<3);
+  }
+  //check child mode
+  if (EEPROM[CHILD_MODE]){
+    if(bitRead(payload.data,6)){
+      bitClear(payload.data,6);
+      bitSet(payload.data,5);
+      bitSet(payload.data,4);
     }
   }
 }
 
 void InitMode(){
-  uint16_t AdcThrottleMin=512, AdcThrottle=512, AdcThrottleMax=512;
-  uint16_t AdcDirectionMin=512 ,AdcDirection=512; AdcDirectionMax=512;
+  static uint8_t throttleMin=0, throttleMax=0;
+  static uint8_t directionMin=0, directionMax=0;
   while (millis()<250){
     GetAdc();
+    CollectData();
+    uint8_t throttle = payload.data>>4;
     //THROTTLE
-    if (adcResult[THROTTLE]>AdcThrottleMax){
-      AdcThrottleMax=adcResult[THROTTLE];
+    if (throttle>=jTable[1][15]){
+      throttleMax=0b00001111;
+    } else if (throttle<=jTable[1][1]){
+      throttleMin=0b00000111;
     }
-    if (adcResult[THROTTLE]<AdcThrottleMin){
-      AdcThrottleMin=adcResult[THROTTLE];
-    }
-    //DIRECTION
-       if (adcResult[DIRECTION]>AdcDirectionMax){
-      AdcDirectionMax=adcResult[DIRECTION];
-    }
-    if (adcResult[DIRECTION]<AdcDirectionMin){
-      AdcDirectionMin=adcResult[DIRECTION];
-    }
-  }
 
-  if (AdcThrottleMin>AdcThrottle*0.9 and AdcThrottleMax<AdcThrottle*1.1){
-    return;
-  } else if(AdcDirectionMin>AdcDirection*0.9 and AdcDirectionMax<AdcDirection*1.1){
-    return;
+    uint8_t direction = payload.data & 0b00001111;
+    //DIRECTION
+    if (direction>=jTable[1][15]){
+      directionMax=0b00001111;
+    } else if (direction<=jTable[1][1]){
+      directionMin=0b00000111;
+    }
   }
   /*If, when power is applied, the throttle is at maximum and the direction is to the right, then the normal mode.
     If the throttle is at minimum and the direction is to the right, then the child mode
   */
-  if(AdcDirectionMax>AdcDirection*1.1 and AdcThrottleMax>AdcThrottle*1.1){
+  if(directionMax==0b00001111 and throttleMax==0b00001111 and directionMin==0 and throttleMin==0){
     EEPROM[CHILD_MODE]=false;
-    return;
-  } else if (AdcDirectionMax>AdcDirection*1.1 and AdcThrottleMin<AdcThrottle*0.9){
+  } else if (directionMax==0b00001111 and throttleMin==0b00000111 and directionMin==0 and throttleMax==0){
     EEPROM[CHILD_MODE]=true;
-    return;
-  } else {
-    return;
   }
 
 }
@@ -188,13 +208,7 @@ void setup() {
 
 void loop() {
   GetAdc();
-  payload.data=(GetBlock(adcResult[THROTTLE])<<4)+GetBlock(adcResult[DIRECTION]);
-  if (EEPROM[CHILD_MODE]){
-    if(bitRead(payload.data,6){
-      bitClear(payload.data,6);
-      bitSet(payload.data,5);
-      bitSet(payload.data,4);
-    }
-  }
+  CollectData();
+ 
   SendMessage();
 }
