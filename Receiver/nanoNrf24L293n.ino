@@ -42,12 +42,14 @@ unsigned long previousMillis = 0;
 #define STEERING_PIN   A1
 #define AVERAGE_FACTOR 10
 
+static uint16_t adcSteering=512;
+
 unsigned long currentMillis;
 
-#define J_TABLE_LENGTH    16
+#define J_TABLE_LENGTH    15
 uint16_t jTable[2][J_TABLE_LENGTH]={
-    {     0,   100,   170,   240,    310,    380,    450,    512,    570,    640,    710,    780,    850,    924,    925,   1024},
-    {0b0111, 0b110, 0b101, 0b100, 0b0011, 0b0010, 0b0001, 0b0000, 0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
+    {   200,   250,   300,   350,    400,    450,    500,    600,    650,    700,    750,    800,    850,    900,   1024},
+    {0b0111, 0b110, 0b101, 0b100, 0b0011, 0b0010, 0b0001, 0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
 };
 
 
@@ -155,9 +157,6 @@ void HeadLight(){
 //recalculation taking into account the current position of the steering wheels
 uint8_t Steering(){
   uint8_t steeringPos;
-  uint8_t adcValue=analogRead(STEERING_PIN);
-  static uint16_t adcSteering=512;
-  adcSteering = (adcSteering*(AVERAGE_FACTOR-1)+adcValue)/AVERAGE_FACTOR;
   
   for (size_t i = 0; i < J_TABLE_LENGTH+1; i++){
     if (adcSteering<=jTable[0][i]){
@@ -176,10 +175,34 @@ uint8_t Steering(){
   
 }
 
+void InitAdc(){
+    ADCSRA = 0;
+    ADCSRA |= (1<<ADEN) //ADC on
+           |(1<<ADSC)
+           |(1<<ADPS2)|(1<<ADPS1)|(1<<ADPS0); //Prescaler  128 = 64 кГц
+
+    ADMUX = 0;
+    ADMUX |= (1<<REFS0); //nternal voltage reference
+}
+
+void GetAdc(){
+    if((ADCSRA & (1 << ADIF)) == 0){
+        return;
+    }
+
+    uint16_t adcValue = ADCL | (ADCH << 8);
+    adcSteering= (adcSteering*(AVERAGE_FACTOR-1)+adcValue)/AVERAGE_FACTOR;
+
+    ADMUX = 0;
+    ADMUX |= (1<<REFS0)|(STEERING_PIN - A0);
+    ADCSRA |= (1 << ADSC);
+}
+
 //********************setup/loop**********************//
 
 void setup() {
   intNfr(); //инициализируем nrf
+  InitAdc();
   Serial.begin(115200);
   Serial.println(F("RECEIVED  DATA | THROTTLE  DATA | DIRECTION DATA"));
 }
@@ -195,6 +218,7 @@ void loop() {
   //конец время
 
   //читаем с NRF
+  GetAdc();
   ReadRF();
   SetL298n();
   HeadLight();
