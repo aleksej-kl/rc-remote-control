@@ -40,7 +40,7 @@ unsigned long previousMillis = 0;
 //
 #define HEAD_LIGHT_PIN A0
 #define STEERING_PIN   A1
-#define AVERAGE_FACTOR 2
+#define AVERAGE_FACTOR 1
 
 static uint16_t adcSteering=512;
 
@@ -48,8 +48,8 @@ unsigned long currentMillis;
 
 #define J_TABLE_LENGTH    15
 uint16_t jTable[2][J_TABLE_LENGTH]={
-    {     0,   180,   240,   300,    360,    420,    480,     530,    590,    750,    810,    870,    930,    935,   1024},
-    {0b0111, 0b110, 0b101, 0b100, 0b0011, 0b0010, 0b0001,  0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
+    {   50,   175,   300,   350,    400,    450,    500,    600,    650,    700,    750,    800,    875,    950,   1024},
+    {0b0111, 0b110, 0b101, 0b100, 0b0011, 0b0010, 0b0001, 0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
 };
 
 
@@ -82,7 +82,7 @@ void ParserMessage() {
   direction=data & 0b00001111;
   //записываем время крайнего приема
   previousMillis=millis();
-  DEBUG();
+  //DEBUG();
 }
 
 //*******************************************//
@@ -107,21 +107,26 @@ void SetL298n() {
 
   //recalc direction
   uint8_t newDir=Steering();
+  static uint8_t dutyD=0;
+  Serial.println(newDir, BIN);
   //set motorB direction
   if(newDir==0b00000000) {
     digitalWrite(IN3_PIN, LOW);
     digitalWrite(IN4_PIN, LOW);
-    duty=0;
+    dutyD=0;
   } else if(newDir<0b00001000) {
     digitalWrite(IN3_PIN, HIGH);
     digitalWrite(IN4_PIN, LOW);
-    duty=50;
+    if(dutyD<50)dutyD=50;
+    dutyD=dutyD+1;
   } else {
     digitalWrite(IN3_PIN, LOW);
     digitalWrite(IN4_PIN, HIGH);
-    duty=50;
+    if(dutyD<50)dutyD=50;
+    dutyD=dutyD+1;
   }
-  analogWrite(ENB_PIN, duty);
+  if (dutyD>200) dutyD-=3;
+  analogWrite(ENB_PIN, dutyD);
 }
 
 void DEBUG(){
@@ -164,7 +169,20 @@ uint8_t Steering(){
       break;
     }
   } 
-
+  Serial.print(direction, BIN);
+  Serial.print("  |  ");
+  Serial.print(steeringPos, BIN);
+  Serial.print("  |  ");
+  if(direction==0b00000000){
+    if(steeringPos==0b00000000){
+      return 0b00000000;
+    }
+    else if(steeringPos>0b00001000){
+      return 0b00000001;
+    } else {
+      return 0b00001001;
+    }
+  }
   if(steeringPos<direction){
     return direction;
   } else if(steeringPos>direction){
