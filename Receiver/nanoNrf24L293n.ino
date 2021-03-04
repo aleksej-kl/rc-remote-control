@@ -40,7 +40,7 @@ unsigned long previousMillis = 0;
 //
 #define HEAD_LIGHT_PIN A0
 #define STEERING_PIN   A1
-#define AVERAGE_FACTOR 10
+#define AVERAGE_FACTOR 2
 
 static uint16_t adcSteering=512;
 
