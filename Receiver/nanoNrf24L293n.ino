@@ -48,8 +48,8 @@ unsigned long currentMillis;
 
 #define J_TABLE_LENGTH    15
 uint16_t jTable[2][J_TABLE_LENGTH]={
-    {   120,   180,   240,   300,    360,    420,    480,    540,    600,    660,    720,    780,    840,    920,   1024},
-    {0b0111, 0b110, 0b101, 0b100, 0b0011, 0b0010, 0b0001, 0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
+    {   100,   200,    280,    350,    410,    460,    500,    560,    600,    650,    710,    780,    860,    950,   1024},
+    {0b0111, 0b0110, 0b0101, 0b0100, 0b0011, 0b0010, 0b0001, 0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
 };
 
 
@@ -107,8 +107,8 @@ void SetL298n() {
 
   //recalc direction
   uint8_t newDir=Steering();
+  delay(2);
   static uint8_t dutyD=0;
-  Serial.println(newDir, BIN);
   //set motorB direction
   if(newDir==0b00000000) {
     digitalWrite(IN3_PIN, LOW);
@@ -122,10 +122,10 @@ void SetL298n() {
   } else {
     digitalWrite(IN3_PIN, LOW);
     digitalWrite(IN4_PIN, HIGH);
-    if(dutyD<50)dutyD=50;
+    if(dutyD<50)dutyD=150;
     dutyD=dutyD+1;
   }
-  if (dutyD>200) dutyD-=3;
+  if (dutyD>230) dutyD-=3;
   analogWrite(ENB_PIN, dutyD);
 }
 
@@ -169,10 +169,6 @@ uint8_t Steering(){
       break;
     }
   } 
-  Serial.print(direction, BIN);
-  Serial.print("  |  ");
-  Serial.print(steeringPos, BIN);
-  Serial.print("  |  ");
   if(direction==0b00000000){
     if(steeringPos==0b00000000){
       return 0b00000000;

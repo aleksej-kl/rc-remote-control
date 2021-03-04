@@ -52,10 +52,11 @@ payload_t payload; // массив сообщений на отправку
 #define THROTTLE	    0
 #define DIRECTION     1
 #define ADC_INPUN_LENGTH  2
-#define AVERAGE_FACTOR    3
+#define AVERAGE_FACTOR    2
 uint16_t adcResult[ADC_INPUN_LENGTH]={512, 512};
 
-#define CHILD_MODE 10 //address in eeprom for child mode (low speed throttle)
+#define CHILD_MODE 1 //address in eeprom for child mode (low speed throttle)
+bool childMode = true;
 
 //парамметры потенциометров
 #define INVERT_THROTLE    true
@@ -63,8 +64,8 @@ uint16_t adcResult[ADC_INPUN_LENGTH]={512, 512};
 
 #define J_TABLE_LENGTH    15
 uint16_t jTable[2][J_TABLE_LENGTH]={
-    {     0,   100,   170,   240,    310,    380,    450,     570,    640,    710,    780,    850,    924,    925,   1024},
-    {0b0111, 0b110, 0b101, 0b100, 0b0011, 0b0010, 0b0001,  0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
+    {   50,   80,    100,    150,    260,    330,    430,    620,    700,    770,    830,    880,    920,    950,   1024},
+    {0b0111, 0b0110, 0b0101, 0b0100, 0b0011, 0b0010, 0b0001, 0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
 };
 
 // функция инициализации NRF
@@ -131,59 +132,74 @@ void GetAdc(){
 
 
 uint8_t CollectData() {
+  uint8_t throttle=0b0000;
+  uint8_t direction=0b0000;
   //add THROTTLE data
   for (size_t i = 0; i < J_TABLE_LENGTH+1; i++){
     if (adcResult[THROTTLE]<=jTable[0][i]){
-      payload.data = (jTable[1][i]<<4);
+      throttle = jTable[1][i];
       break;
     }
   } 
   //add DIRECTION data
   for (size_t i = 0; i < J_TABLE_LENGTH+1; i++){
     if (adcResult[DIRECTION]<=jTable[0][i]){
-      payload.data += jTable[1][i];
+      direction = jTable[1][i];
       break;
     }
   }
   //check invert
   if (INVERT_THROTLE){
-    payload.data ^= (1<<7);
-  }
-  if (INVERT_DIRECTION){
-    payload.data ^= (1<<3);
-  }
-  //check child mode
-  if (EEPROM[CHILD_MODE]){
-    if(bitRead(payload.data,6)){
-      bitClear(payload.data,6);
-      bitSet(payload.data,5);
-      bitSet(payload.data,4);
+    //payload.data ^= (1<<7);
+    if (throttle>=0b1000){
+        bitClear(throttle, 3);
+    } else if(throttle>=0b0001){
+      bitSet(throttle, 3);
     }
   }
+  if (INVERT_DIRECTION){
+    //payload.data ^= (1<<3);
+    if (direction>=0b1000){
+      bitClear(direction, 3);
+    } else if (direction>=0b0001){
+      bitSet(direction, 3);
+    }
+  }
+  //check child mode
+  if (childMode){
+    if(bitRead(throttle,2)){
+      bitClear(throttle,2);
+      bitSet(throttle,1);
+      bitClear(throttle,0);
+    }
+  }
+  payload.data = throttle<<4;
+  payload.data += direction;
 }
 
 void InitMode(){
   static uint8_t throttleMin=0, throttleMax=0;
   static uint8_t directionMin=0, directionMax=0;
-  while (millis()<250){
+  while (millis()<1000){
     GetAdc();
-    CollectData();
-    uint8_t throttle = payload.data>>4;
-    //THROTTLE
-    if (throttle>=jTable[1][15]){
-      throttleMax=0b00001111;
-    } else if (throttle<=jTable[1][1]){
-      throttleMin=0b00000111;
-    }
-
-    uint8_t direction = payload.data & 0b00001111;
-    //DIRECTION
-    if (direction>=jTable[1][15]){
-      directionMax=0b00001111;
-    } else if (direction<=jTable[1][1]){
-      directionMin=0b00000111;
-    }
   }
+  CollectData();
+  uint8_t throttle = payload.data>>4;
+  //THROTTLE
+  if (throttle>=jTable[1][9]){
+    throttleMax=0b00001111;
+  } else if (throttle<=jTable[1][5]){
+    throttleMin=0b00000111;
+  }
+
+  uint8_t direction = payload.data & 0b00001111;
+  //DIRECTION
+  if (direction>=jTable[1][9]){
+    directionMax=0b00001111;
+  } else if (direction<=jTable[1][5]){
+    directionMin=0b00000111;
+  }
+
   /*If, when power is applied, the throttle is at maximum and the direction is to the right, then the normal mode.
     If the throttle is at minimum and the direction is to the right, then the child mode
   */
@@ -192,6 +208,7 @@ void InitMode(){
   } else if (directionMax==0b00001111 and throttleMin==0b00000111 and directionMin==0 and throttleMax==0){
     EEPROM[CHILD_MODE]=true;
   }
+  childMode=EEPROM[CHILD_MODE];
 
 }
 
