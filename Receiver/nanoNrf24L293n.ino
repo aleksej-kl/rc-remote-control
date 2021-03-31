@@ -32,11 +32,11 @@ unsigned long previousMillis = 0;
 /*L298N*/
 #define ENA_PIN 5  //ENA
 #define ENB_PIN 6  //ENB
-#define IN1_PIN 2  //IN1
-#define IN2_PIN 3  //IN2
-#define IN3_PIN 4  //IN3
-#define IN4_PIN 10 //IN4
 
+#define IN1 2  //IN1 PD2
+#define IN2 3  //IN2 PD3
+#define IN3 4  //IN3 PD4
+#define IN4 2  //IN4 PB2
 //
 #define HEAD_LIGHT_PIN A0
 #define STEERING_PIN   A1
@@ -91,14 +91,14 @@ void SetL298n() {
   uint8_t duty;
   //set motorA throttle
   if(throttle==0b00000000) {
-    digitalWrite(IN1_PIN, LOW);
-    digitalWrite(IN2_PIN, LOW);
+    PORTD |= (1<<IN1); 
+    PORTD |= (1<<IN2);
   } else if(throttle<0b00001000) {
-    digitalWrite(IN1_PIN, HIGH);
-    digitalWrite(IN2_PIN, LOW);
+    PORTD |= (1<<IN1);
+    PORTD &= ~(1<<IN2);
   } else {
-    digitalWrite(IN1_PIN, LOW);
-    digitalWrite(IN2_PIN, HIGH);
+    PORTD &= ~(1<<IN1);
+    PORTD |= (1<<IN2);
   }
   duty=throttle;
   bitClear(duty, 3);
@@ -111,17 +111,17 @@ void SetL298n() {
   static uint8_t dutyD=0;
   //set motorB direction
   if(newDir==0b00000000) {
-    digitalWrite(IN3_PIN, LOW);
-    digitalWrite(IN4_PIN, LOW);
+    PORTD |= (1<<IN3); 
+    PORTB |= (1<<IN4);
     dutyD=0;
   } else if(newDir<0b00001000) {
-    digitalWrite(IN3_PIN, HIGH);
-    digitalWrite(IN4_PIN, LOW);
+    PORTD |= (1<<IN3);
+    PORTB &= ~(1<<IN4);
     if(dutyD<50)dutyD=50;
     dutyD=dutyD+1;
   } else {
-    digitalWrite(IN3_PIN, LOW);
-    digitalWrite(IN4_PIN, HIGH);
+    PORTD &= ~(1<<IN3);
+    PORTB |= (1<<IN4);
     if(dutyD<50)dutyD=150;
     dutyD=dutyD+1;
   }
@@ -215,6 +215,10 @@ void GetAdc(){
 //********************setup/loop**********************//
 
 void setup() {
+  DDRD |= (1<<IN1); //IN1 to OUTPUT
+  DDRD |= (1<<IN2); //IN2 to OUTPUT
+  DDRD |= (1<<IN3); //IN3 to OUTPUT
+  DDRB |= (1<<IN4); //IN4 to OUTPUT
   intNfr(); //инициализируем nrf
   InitAdc();
   Serial.begin(115200);
