@@ -178,40 +178,19 @@ uint8_t CollectData() {
 }
 
 void InitMode(){
-  static uint8_t throttleMin=0, throttleMax=0;
-  static uint8_t directionMin=0, directionMax=0;
-  while (millis()<1000){
+  while (millis()<250){
     GetAdc();
   }
-  CollectData();
-  uint8_t throttle = payload.data>>4;
-  //THROTTLE
-  if (throttle>=jTable[1][9]){
-    throttleMax=0b00001111;
-  } else if (throttle<=jTable[1][5]){
-    throttleMin=0b00000111;
-  }
-
-  uint8_t direction = payload.data & 0b00001111;
-  //DIRECTION
-  if (direction>=jTable[1][9]){
-    directionMax=0b00001111;
-  } else if (direction<=jTable[1][5]){
-    directionMin=0b00000111;
-  }
-
   /*If, when power is applied, the throttle is at maximum and the direction is to the right, then the normal mode.
     If the throttle is at minimum and the direction is to the right, then the child mode
   */
-  if(directionMax==0b00001111 and throttleMax==0b00001111 and directionMin==0 and throttleMin==0){
+  if adcResult[THROTTLE]<300 and adcResult[DIRECTION]<300{
     EEPROM[CHILD_MODE]=false;
-  } else if (directionMax==0b00001111 and throttleMin==0b00000111 and directionMin==0 and throttleMax==0){
+  } else if adcResult[THROTTLE]>700 and adcResult[DIRECTION]<300{ {
     EEPROM[CHILD_MODE]=true;
   }
   childMode=EEPROM[CHILD_MODE];
-
 }
-
 
 //********************* setup - loop ***********************//
 
@@ -226,6 +205,5 @@ void setup() {
 void loop() {
   GetAdc();
   CollectData();
- 
   SendMessage();
 }
