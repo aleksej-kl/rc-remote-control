@@ -52,7 +52,7 @@ payload_t payload; // массив сообщений на отправку
 #define THROTTLE	    0
 #define DIRECTION     1
 #define ADC_INPUN_LENGTH  2
-#define AVERAGE_FACTOR    2
+#define AVERAGE_FACTOR    1
 uint16_t adcResult[ADC_INPUN_LENGTH]={512, 512};
 
 #define CHILD_MODE 1 //address in eeprom for child mode (low speed throttle)
@@ -184,9 +184,9 @@ void InitMode(){
   /*If, when power is applied, the throttle is at maximum and the direction is to the right, then the normal mode.
     If the throttle is at minimum and the direction is to the right, then the child mode
   */
-  if adcResult[THROTTLE]<300 and adcResult[DIRECTION]<300{
+  if (adcResult[THROTTLE]<300 and adcResult[DIRECTION]<300){
     EEPROM[CHILD_MODE]=false;
-  } else if adcResult[THROTTLE]>700 and adcResult[DIRECTION]<300{ {
+  } else if (adcResult[THROTTLE]>700 and adcResult[DIRECTION]<300){
     EEPROM[CHILD_MODE]=true;
   }
   childMode=EEPROM[CHILD_MODE];
