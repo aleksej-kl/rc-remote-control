@@ -63,8 +63,9 @@ bool childMode = true;
 #define INVERT_DIRECTION  true
 
 #define J_TABLE_LENGTH    15
-uint16_t jTable[2][J_TABLE_LENGTH]={
-    {   50,   80,    100,    150,    260,    330,    430,    620,    700,    770,    830,    880,    920,    950,   1024},
+uint16_t jTable[3][J_TABLE_LENGTH]={
+    {    50,     80,    100,    150,    260,    330,    430,    620,    700,    770,    830,    880,    920,    950,   1024},
+    {   120,    160,    210,    265,    320,    375,   430 ,    620,    670,    720,    770,    820,    870,    920,   1024},
     {0b0111, 0b0110, 0b0101, 0b0100, 0b0011, 0b0010, 0b0001, 0b0000, 0b1001, 0b1010, 0b1011, 0b1100, 0b1101, 0b1110, 0b1111}
 };
 
@@ -72,8 +73,10 @@ uint16_t jTable[2][J_TABLE_LENGTH]={
 void InitNrf() {
   radio.begin();
   radio.setChannel(CHANNEL); // устанавливаем канал
-  radio.setDataRate(RF24_250KBPS); // скорость передачи
-  radio.setPALevel(RF24_PA_LOW); // мощность передачи
+  //radio.setDataRate(RF24_250KBPS); // скорость передачи
+  radio.setDataRate(RF24_1MBPS); // скорость передачи
+  //radio.setPALevel(RF24_PA_LOW); // мощность передачи
+  radio.setPALevel(RF24_PA_MAX); // мощность передачи
   radio.openWritingPipe(PIPE); // открываем трубу на передачу.
 }
 
@@ -137,14 +140,14 @@ uint8_t CollectData() {
   //add THROTTLE data
   for (size_t i = 0; i < J_TABLE_LENGTH+1; i++){
     if (adcResult[THROTTLE]<=jTable[0][i]){
-      throttle = jTable[1][i];
+      throttle = jTable[2][i];
       break;
     }
   } 
   //add DIRECTION data
   for (size_t i = 0; i < J_TABLE_LENGTH+1; i++){
-    if (adcResult[DIRECTION]<=jTable[0][i]){
-      direction = jTable[1][i];
+    if (adcResult[DIRECTION]<=jTable[1][i]){
+      direction = jTable[2][i];
       break;
     }
   }
